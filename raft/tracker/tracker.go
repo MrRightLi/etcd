@@ -114,6 +114,9 @@ func (c *Config) Clone() Config {
 // ProgressTracker tracks the currently active configuration and the information
 // known about the nodes and learners in it. In particular, it tracks the match
 // index for each peer which in turn allows reasoning about the committed index.
+// 记录集群中其他节点的日志复制情况 （Nextlndex 和 Matchlndex)。
+// 每个 Follower 节点对应的 Nextlndex 值和 Matchlndex 值都封装在 Progress 实例中
+// 每个 Progress 实例中还封装了对应 Follower 节点的相关信息
 type ProgressTracker struct {
 	Config
 
