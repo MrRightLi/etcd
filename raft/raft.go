@@ -115,6 +115,7 @@ func (st StateType) String() string {
 // Config contains the parameters to start a raft.
 type Config struct {
 	// ID is the identity of the local raft. ID cannot be 0.
+	// 当前节点的 ID 。
 	ID uint64
 
 	// ElectionTick is the number of Node.Tick invocations that must pass between
@@ -123,21 +124,25 @@ type Config struct {
 	// candidate and start an election. ElectionTick must be greater than
 	// HeartbeatTick. We suggest ElectionTick = 10 * HeartbeatTick to avoid
 	// unnecessary leader switching.
+	// 用于初始化 raft.electionTimeout ，即逻辑时钟连续推进多少次后，就会触发 Follower 节点的状态切换及新一轮的 Leader 选举。
 	ElectionTick int
 	// HeartbeatTick is the number of Node.Tick invocations that must pass between
 	// heartbeats. That is, a leader sends heartbeat messages to maintain its
 	// leadership every HeartbeatTick ticks.
+	// 用于初始化 raft.heartbeatTimeout，即逻辑时钟连续推进多少次后，就触发 Leader 节点发送心跳消息 。
 	HeartbeatTick int
 
 	// Storage is the storage for raft. raft generates entries and states to be
 	// stored in storage. raft reads the persisted entries and states out of
 	// Storage when it needs. raft reads out the previous state and configuration
 	// out of storage when restarting.
+	// 当前节点保存 raft 日志记录使用的存储。
 	Storage Storage
 	// Applied is the last applied index. It should only be set when restarting
 	// raft. raft will not return entries to the application smaller or equal to
 	// Applied. If Applied is unset when restarting, raft might return previous
 	// applied entries. This is a very application dependent configuration.
+	// 当前已经应用的记录位置（己应用的最后一条 Entry 记录的索引值），该值在节点重启时需要设置，否则会重新应用己经应用过 Entity 记录
 	Applied uint64
 
 	// MaxSizePerMsg limits the max byte size of each append message. Smaller
@@ -145,9 +150,11 @@ type Config struct {
 	// during normal operation). On the other side, it might affect the
 	// throughput during normal replication. Note: math.MaxUint64 for unlimited,
 	// 0 for at most one entry per message.
+	// 用于初始化 raft.maxMsgSize 字段，每条消息的最大字节数， 如果是 math.MaxUint64 则没有上限，如果是 0 则表示每条消息最多携带一条Entity
 	MaxSizePerMsg uint64
 	// MaxCommittedSizePerReady limits the size of the committed entries which
 	// can be applied.
+	// 用于初始化 raft.maxInflight，即已经发送出去且未收到响应的最大消息个数。
 	MaxCommittedSizePerReady uint64
 	// MaxUncommittedEntriesSize limits the aggregate byte size of the
 	// uncommitted entries that may be appended to a leader's log. Once this
@@ -159,15 +166,18 @@ type Config struct {
 	// has its own sending buffer over TCP/UDP. Setting MaxInflightMsgs to avoid
 	// overflowing that sending buffer. TODO (xiangli): feedback to application to
 	// limit the proposal rate?
+	// 用于初始化 raft.maxInflight，即已经发送出去且未收到响 应的最大消息个数。
 	MaxInflightMsgs int
 
 	// CheckQuorum specifies if the leader should check quorum activity. Leader
 	// steps down when quorum is not active for an electionTimeout.
+	// 是否开启 CheckQuorum 模式 ，用于初始化 ra丘.ch巳ckQuorum 字段， 对应 CheckQuorum 模式。
 	CheckQuorum bool
 
 	// PreVote enables the Pre-Vote algorithm described in raft thesis section
 	// 9.6. This prevents disruption when a node that has been partitioned away
 	// rejoins the cluster.
+	// 是否开启 PreVote 模式， 用于初始化 raft.preVote 宇段， PreVote 模式前面己经详细介绍过了，不再赘述 。
 	PreVote bool
 
 	// ReadOnlyOption specifies how the read only request is processed.
