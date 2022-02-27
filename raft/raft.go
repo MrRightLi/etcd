@@ -363,29 +363,32 @@ type raft struct {
 }
 
 func newRaft(c *Config) *raft {
+	// 检测参数 Config 中各字段的合法性，异常处理
 	if err := c.validate(); err != nil {
 		panic(err.Error())
 	}
+	// 创建 raftLog 实例，用于记录 Entry 记录
 	raftlog := newLogWithSize(c.Storage, c.Logger, c.MaxCommittedSizePerReady)
+	// Storage 的初始状态是通过本地 Entry 记录回放得到的
 	hs, cs, err := c.Storage.InitialState()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
 
 	r := &raft{
-		id:                        c.ID,
-		lead:                      None,
+		id:                        c.ID, // 当前节点的 ID
+		lead:                      None, // 当前集群中 Leader 节 点的 工D，初始化时先被设立成0
 		isLearner:                 false,
-		raftLog:                   raftlog,
+		raftLog:                   raftlog, // 负责管理 Entry 记录的 raftLog 实例
 		maxMsgSize:                c.MaxSizePerMsg,
 		maxUncommittedSize:        c.MaxUncommittedEntriesSize,
-		prs:                       tracker.MakeProgressTracker(c.MaxInflightMsgs),
-		electionTimeout:           c.ElectionTick,
-		heartbeatTimeout:          c.HeartbeatTick,
+		prs:                       tracker.MakeProgressTracker(c.MaxInflightMsgs), // 已经发送出去且未收到响应的最大消息个数
+		electionTimeout:           c.ElectionTick,                                 // 选举起时时间
+		heartbeatTimeout:          c.HeartbeatTick,                                // 心跳起时时间
 		logger:                    c.Logger,
-		checkQuorum:               c.CheckQuorum,
-		preVote:                   c.PreVote,
-		readOnly:                  newReadOnly(c.ReadOnlyOption),
+		checkQuorum:               c.CheckQuorum,                 // 是否开启 CheckQuorum 模式
+		preVote:                   c.PreVote,                     // ／是否开启 PreVote 模式
+		readOnly:                  newReadOnly(c.ReadOnlyOption), // 只读请求的相关配置
 		disableProposalForwarding: c.DisableProposalForwarding,
 	}
 
@@ -667,6 +670,7 @@ func (r *raft) reset(term uint64) {
 
 func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
 	li := r.raftLog.lastIndex()
+	// 1. 设置待追加的 Entry 记录的 Term 值和 Index 值。
 	for i := range es {
 		es[i].Term = r.Term
 		es[i].Index = li + 1 + uint64(i)
@@ -681,9 +685,12 @@ func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
 		return false
 	}
 	// use latest "last" index after truncate/append
+	// 2. 向当前节点的 raftLog 中追加 Entry 记录。
 	li = r.raftLog.append(es...)
+	// 3. 更新当前节点对应的 Progress 实例。
 	r.prs.Progress[r.id].MaybeUpdate(li)
 	// Regardless of maybeCommit's return, our caller will call bcastAppend.
+	// 尝试提交 Entry 记录，即修改 raftLog.committed 字段的值。
 	r.maybeCommit()
 	return true
 }
